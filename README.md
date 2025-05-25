@@ -18,8 +18,8 @@
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/yourusername/mp4_to_m3u8.git
-cd mp4_to_m3u8
+git clone https://github.com/duolabmeng6/FFmpeg_mp4_to_m3u8_plus.git
+cd FFmpeg_mp4_to_m3u8_plus
 ```
 
 2. 安装依赖：
@@ -44,17 +44,9 @@ sudo apt-get install ffmpeg
 1. 将 MP4 文件放入 input 目录
 2. 运行转换脚本：
 ```bash
-python convert.py
+streamlit run main.py
 ```
 3. 转换后的文件将保存在 output 目录中
-
-## 配置说明
-
-可以在 config.py 中修改以下配置：
-
-- 切片时长
-- 输出质量
-- 输出目录路径
 
 ## 许可证
 
