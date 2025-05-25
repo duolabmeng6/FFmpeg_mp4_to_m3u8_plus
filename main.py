@@ -1,5 +1,23 @@
 import streamlit as st
 from components.navigation import show_navigation
+import os
+import sys
+
+def setup_ffmpeg_path():
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 创建的临时文件夹
+        application_path = sys._MEIPASS
+    else:
+        # 正常运行时的脚本所在目录
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # 将 ffmpeg/bin 目录添加到 PATH
+    ffmpeg_bin_path = os.path.join(application_path, 'ffmpeg', 'bin')
+    if os.path.exists(ffmpeg_bin_path):
+        if sys.platform == 'win32':
+            os.environ['PATH'] = f"{ffmpeg_bin_path};{os.environ.get('PATH', '')}"
+        else:
+            os.environ['PATH'] = f"{ffmpeg_bin_path}:{os.environ.get('PATH', '')}"
 
 # 设置页面配置
 st.set_page_config(
@@ -9,6 +27,9 @@ st.set_page_config(
 )
 
 def main():
+    # 设置 ffmpeg 路径
+    setup_ffmpeg_path()
+    
     # 显示导航菜单
     show_navigation()
     
