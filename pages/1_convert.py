@@ -21,6 +21,61 @@ st.set_page_config(
     layout="wide"
 )
 
+# 定义配置文件路径
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'convert_config.json')
+
+# 确保配置目录存在
+os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+
+def load_config():
+    """从文件加载配置"""
+    default_config = {
+        'video_encoder': 'copy',
+        'resolutions': ["1920x1080", "1280x720"],  # 默认1080p和720p
+        'audio_encoder': 'copy',
+        'audio_bitrate': '128k',
+        'segment_time': '6',
+        'encryption_enabled': False,
+        # 添加默认视频码率配置
+        'video_bitrates': {
+            "3840x2160": "15000k",
+            "2560x1440": "9000k",
+            "1920x1080": "4500k",
+            "1280x720": "2500k",
+            "854x480": "1500k",
+            "640x360": "800k",
+            "原始分辨率": "4000k"
+        }
+    }
+    
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                saved_config = json.load(f)
+                # 合并配置，确保新添加的配置项也有默认值
+                merged_config = {**default_config, **saved_config}
+                # 特殊处理video_bitrates，确保所有分辨率都有码率设置
+                if 'video_bitrates' in saved_config:
+                    merged_config['video_bitrates'] = {
+                        **default_config['video_bitrates'],
+                        **saved_config['video_bitrates']
+                    }
+                return merged_config
+    except Exception as e:
+        st.warning(f"加载配置文件失败: {str(e)}")
+    
+    return default_config
+
+def save_config(config):
+    """保存配置到文件"""
+    try:
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"保存配置文件失败: {str(e)}")
+        return False
+
 # 从main2.py复制所需的函数
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -129,20 +184,62 @@ def main():
     
     st.title("🎬 MP4转M3U8 FFmpeg命令生成器")
     
+    # 加载配置
+    config = load_config()
+    
     # 初始化session_state
-    if 'video_encoder' not in st.session_state:
-        st.session_state.video_encoder = 'copy'
-    if 'resolutions' not in st.session_state:
-        st.session_state.resolutions = ["1920x1080"]
-    if 'audio_encoder' not in st.session_state:
-        st.session_state.audio_encoder = 'copy'
-    if 'audio_bitrate' not in st.session_state:
-        st.session_state.audio_bitrate = '128k'
-    if 'segment_time' not in st.session_state:
-        st.session_state.segment_time = '6'
-    if 'encryption_enabled' not in st.session_state:
-        st.session_state.encryption_enabled = False
-   
+    for key, value in config.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+    
+    # 添加配置管理按钮
+    st.sidebar.header("⚙️ 配置管理")
+    col1, col2 = st.sidebar.columns(2)
+    
+    with col1:
+        if st.button("💾 保存当前配置", help="将当前配置保存到本地文件，下次启动时会自动加载"):
+            # 收集当前配置
+            current_config = {}
+            for key in config.keys():
+                if key in st.session_state:
+                    current_config[key] = st.session_state[key]
+            
+            # 特别处理video_bitrates
+            if 'video_bitrates' in st.session_state:
+                current_config['video_bitrates'] = st.session_state.video_bitrates
+            
+            # 保存配置
+            if save_config(current_config):
+                st.success("✅ 配置已保存到本地文件")
+            
+    with col2:
+        if st.button("🔄 恢复默认配置", help="恢复到默认的1080p和720p配置"):
+            # 恢复默认配置
+            default_config = {
+                'video_encoder': 'copy',
+                'resolutions': ["1920x1080", "1280x720"],
+                'audio_encoder': 'copy',
+                'audio_bitrate': '128k',
+                'segment_time': '6',
+                'encryption_enabled': False,
+                # 添加默认视频码率配置
+                'video_bitrates': {
+                    "3840x2160": "15000k",
+                    "2560x1440": "9000k",
+                    "1920x1080": "4500k",
+                    "1280x720": "2500k",
+                    "854x480": "1500k",
+                    "640x360": "800k",
+                    "原始分辨率": "4000k"
+                }
+            }
+            # 更新session_state
+            for key, value in default_config.items():
+                st.session_state[key] = value
+            # 保存到文件
+            if save_config(default_config):
+                st.success("✅ 已恢复默认配置并保存到本地文件")
+    
     # 检查系统环境
     env_info = check_system_environment()
     
@@ -500,17 +597,31 @@ def main():
                 }
             }
 
+            # 初始化video_bitrates（如果不存在）
+            if 'video_bitrates' not in st.session_state:
+                st.session_state.video_bitrates = {}
+
             # 为每个选择的分辨率创建一个码率选择器
             video_bitrates = {}
             for resolution in resolutions:
+                # 获取上次保存的码率或默认值
+                default_index = 0
+                if resolution in st.session_state.video_bitrates:
+                    saved_bitrate = st.session_state.video_bitrates[resolution]
+                    if saved_bitrate in bitrate_settings[resolution]["options"]:
+                        default_index = bitrate_settings[resolution]["options"].index(saved_bitrate)
+
                 video_bitrates[resolution] = st.selectbox(
                     f"视频码率 ({resolution})",
                     options=bitrate_settings[resolution]["options"],
-                    index=1,
+                    index=default_index,
                     help=bitrate_settings[resolution]["help"],
                     key=f"video_bitrate_{resolution}"
                 )
                 st.info(f"当前视频设置：{resolution} @ {video_bitrates[resolution]}/s")
+                
+                # 保存选择的码率到session_state
+                st.session_state.video_bitrates[resolution] = video_bitrates[resolution]
 
     # 音频设置
     with col2:
