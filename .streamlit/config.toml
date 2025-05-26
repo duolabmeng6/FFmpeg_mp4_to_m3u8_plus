@@ -1,0 +1,21 @@
+[browser]
+# 设置页面标题
+gatherUsageStats = false
+
+[theme]
+# 设置主题颜色
+primaryColor = "#FF4B4B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+
+[client]
+# 设置工具栏和菜单
+toolbarMode = "minimal"
+showErrorDetails = false
+showSidebarNavigation = false  # 隐藏默认的侧边栏导航
+
+[menu]
+# 这里设置左侧菜单栏的标题
+about = "MP4转M3U8工具 v1.0" 
